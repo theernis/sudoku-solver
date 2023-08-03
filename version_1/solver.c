@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <Math.h>
+#include <stdbool.h>
 
 //sudoku struct
 typedef struct {
@@ -33,6 +34,78 @@ void deallocate_sudoku(Sudoku *sudoku) {
     sudoku->sudoku = NULL;
     free(sudoku);
     sudoku = NULL;
+}
+
+//checks if sudokus is solved
+bool check_sudoku_is_solved(Sudoku* sudoku) {
+
+    int s = sudoku->size;
+
+    for (int i = 0; i < s; i++)
+    {
+        int n = i * (s + (int)sqrt(s)) - (int)floor(i / (int)sqrt(s)) * (s - 1);
+
+        //never freed could possibly lead to memory leaks
+        bool *check_list = malloc(sizeof(bool) * s);
+
+        bool result = true;
+
+        //resets checklist
+        for (int j = 0; j < s; j++)
+        {
+            check_list[j] = false;
+        }
+        //loop trough row
+        for (int j = 0; j < s; j++)
+        {
+            check_list[sudoku->sudoku[n - n % s + j] - 1] = true;
+        }
+
+        //check and resets checklist
+        for (int j = 0; j < s; j++)
+        {
+            if (!check_list[j]) {
+                result = false;
+                break;
+            }
+            check_list[j] = false;
+        }
+        //loop trough column
+        for (int j = 0; j < s; j++)
+        {
+            check_list[sudoku->sudoku[n % s + s * j] - 1] = true;
+        }
+
+        //check and resets checklist
+        for (int j = 0; j < s; j++)
+        {
+            if (!check_list[j]) {
+                result = false;
+                break;
+            }
+            check_list[j] = false;
+        }
+        //loop trough cell
+        for (int j = 0; j < s; j++)
+        {
+            check_list[sudoku->sudoku[n - n % (s * (int)sqrt(s)) + n % s - n % (int)sqrt(s) + j % (int)sqrt(s) + s * (int)floor(j / (int)sqrt(s))] - 1] = true;
+        }
+        //check checklist
+        for (int j = 0; j < s; j++)
+        {
+            if (!check_list[j]) {
+                result = false;
+                break;
+            }
+        }
+
+        //free(check_list);
+        if (!result) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 //copies sudoku (make sure target sudoku is deallocated)
@@ -69,6 +142,15 @@ set_sudoku(PyObject* self, PyObject* args) {
     Py_RETURN_TRUE;
 }
 
+//returns to pythone code if sudoku is solved
+static PyObject*
+check_sudoku() {
+    if (check_sudoku_is_solved(&main_sudoku)) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
 //returns sudoku
 static PyObject*
 return_sudoku() {
@@ -84,6 +166,7 @@ return_sudoku() {
 static PyMethodDef SomeMethods[] = {
     {"set_sudoku", set_sudoku, METH_VARARGS, NULL},
     {"return_sudoku", return_sudoku, METH_NOARGS, NULL},
+    {"check_sudoku", check_sudoku, METH_NOARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 

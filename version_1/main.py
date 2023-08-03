@@ -35,3 +35,4 @@ def print_sudoku(temp_sudoku, temp_size):
 print(solver.set_sudoku(sudoku, sudoku_size))
 print_sudoku(sudoku, sudoku_size)
 print_sudoku(solver.return_sudoku(), sudoku_size)
+print(solver.check_sudoku())
