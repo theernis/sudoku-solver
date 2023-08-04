@@ -13,7 +13,7 @@ Sudoku main_sudoku;
 //allocates sudoku
 void allocate_sudoku(Sudoku *sudoku, PyObject* py_sudoku, int size) {
     sudoku->size = size;
-    sudoku->sudoku = malloc(sizeof(int) * (int)pow(size, 2));
+    sudoku->sudoku = (int*)malloc(sizeof(int) * (int)pow(size, 2));
 
     for (int i = 0; i < size*size; i++) {
 
@@ -32,12 +32,10 @@ void allocate_sudoku(Sudoku *sudoku, PyObject* py_sudoku, int size) {
 void deallocate_sudoku(Sudoku *sudoku) {
     free(sudoku->sudoku);
     sudoku->sudoku = NULL;
-    free(sudoku);
-    sudoku = NULL;
 }
 
 //checks if sudokus is solved
-bool check_sudoku_is_solved(Sudoku* sudoku) {
+bool check_sudoku_is_solved(Sudoku *sudoku) {
 
     int s = sudoku->size;
 
@@ -46,7 +44,7 @@ bool check_sudoku_is_solved(Sudoku* sudoku) {
         int n = i * (s + (int)sqrt(s)) - (int)floor(i / (int)sqrt(s)) * (s - 1);
 
         //never freed could possibly lead to memory leaks
-        bool *check_list = malloc(sizeof(bool) * s);
+        bool *check_list = (bool*)malloc(sizeof(bool) * s);
 
         bool result = true;
 
@@ -112,13 +110,51 @@ bool check_sudoku_is_solved(Sudoku* sudoku) {
 void copy_sudoku(Sudoku *target, Sudoku *sudoku) {
     int size = sudoku->size;
     target->size = size;
-    target->sudoku = malloc(sizeof(int) * size * size);
+    target->sudoku = (int*)malloc(sizeof(int) * size * size);
 
     for (int i = 0; i < size * size; i++) {
 
         //copies each value individually
         target->sudoku[i] = sudoku->sudoku[i];
     }
+}
+
+
+//check if possible to place given number in given place
+bool check_single(Sudoku* temp, int n, int num) {
+    int s = temp->size;
+    for (int j = 0; j < s; j++) {
+        if (temp->sudoku[n - n % s + j] == num ||
+            temp->sudoku[n % s + s * j] == num ||
+            temp->sudoku[n - n % (s * (int)sqrt(s)) + n % s - n % (int)sqrt(s) + j % (int)sqrt(s) + s * (int)floor(j / (int)sqrt(s))] == num) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+//backtracking to solve sudoku
+bool backtrack_solve(Sudoku *temp, int size, int i) {
+    if (i >= pow(size, 2) - 1) {
+        return 1;
+    }
+    if (main_sudoku.sudoku[i] == 0) {
+        for (int a = 1; a <= size; a++) {
+            if (check_single(temp, i, a)) {
+                temp->sudoku[i] = a;
+                if (backtrack_solve(temp, size, i + 1)) {
+                    return 1;
+                }
+            }
+        }
+        temp->sudoku[i] = 0;
+    }
+    else {
+        if (backtrack_solve(temp, size, i + 1)) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 //gets values from python code
@@ -151,6 +187,20 @@ check_sudoku() {
     Py_RETURN_FALSE;
 }
 
+//backtracking to solve sudoku and return if solved to python script
+static PyObject*
+backtrack() {
+    Sudoku temp;
+    copy_sudoku(&temp, &main_sudoku);
+    if (backtrack_solve(&temp, main_sudoku.size, 0)) {
+        copy_sudoku(&main_sudoku, &temp);
+        deallocate_sudoku(&temp);
+        Py_RETURN_TRUE;
+    }
+    deallocate_sudoku(&temp);
+    Py_RETURN_FALSE;
+}
+
 //returns sudoku
 static PyObject*
 return_sudoku() {
@@ -167,6 +217,7 @@ static PyMethodDef SomeMethods[] = {
     {"set_sudoku", set_sudoku, METH_VARARGS, NULL},
     {"return_sudoku", return_sudoku, METH_NOARGS, NULL},
     {"check_sudoku", check_sudoku, METH_NOARGS, NULL},
+    {"backtrack", backtrack, METH_NOARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
