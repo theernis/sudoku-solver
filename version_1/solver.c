@@ -135,7 +135,7 @@ bool check_single(Sudoku* temp, int n, int num) {
 
 //backtracking to solve sudoku
 bool backtrack_solve(Sudoku *temp, int size, int i) {
-    if (i >= pow(size, 2) - 1) {
+    if (i >= pow(size, 2)) {
         return 1;
     }
     if (main_sudoku.sudoku[i] == 0) {
